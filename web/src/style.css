@@ -211,7 +211,19 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
     border-radius: 0;
 }
 .tab.active { color: var(--fg-strong); border-bottom-color: var(--accent); }
-.side-tabs { padding: 0.3rem 0.5rem 0; border-bottom: 0.0625rem solid var(--line); }
+.side-content { container-type: inline-size; }
+.side-tabs { padding: 0.3rem 0.4rem 0; border-bottom: 0.0625rem solid var(--line); }
+/* Tabs share the bar width and shrink their text with it instead of overflowing. */
+.side-tabs .tab {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 0.3em 0.2em;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: clamp(0.7rem, 4.2cqi, 1rem);
+}
 .panel { display: none; padding: 0.8rem; overflow: auto; flex: 1; min-height: 0; }
 .panel.active { display: block; }
 .panel-head { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.5rem; }
@@ -247,6 +259,9 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
 .viewer.zoomed.panning { cursor: grabbing; }
 .view-live, .view-rec { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .view-live img, .view-rec img { max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: auto; }
+.view-live img:not([src]), .view-rec img:not([src]) { visibility: hidden; }
+.view-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.6rem; text-align: center; padding: 1rem; }
+.view-center p { margin: 0; font-family: var(--mono); color: var(--red); max-width: 40rem; }
 .view-note { position: absolute; bottom: 0.5rem; left: 0.6rem; font-family: var(--mono); font-size: 0.85em; color: var(--fg-muted); }
 .overlay {
     position: absolute;

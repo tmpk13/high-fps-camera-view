@@ -46,6 +46,10 @@
                     </div>
                 </div>
                 <div class="view-note" id="live-note"></div>
+                <div class="view-center" id="live-closed" hidden>
+                    <p id="live-closed-text"></p>
+                    <span class="btn-row"><button id="btn-live-reopen" class="primary">Reconnect camera</button><button id="btn-live-choose">Choose device</button></span>
+                </div>
                 <div class="overlay top-left" id="rec-overlay" hidden>
                     <span id="ov-frame"></span>
                     <span id="ov-time"></span>
@@ -142,6 +146,9 @@
             </div>
             <div class="panel" id="panel-camera">
                 <div class="form">
+                    <label class="row"><span>Device</span><select id="sel-device"></select></label>
+                    <div class="row"><span></span><span class="btn-row"><button id="btn-reopen" class="primary" title="Open the selected device">Reconnect</button><button id="btn-devices-refresh" class="small">Refresh list</button></span></div>
+                    <p class="muted small-text" id="device-note"></p>
                     <label class="row"><span>Format</span><select id="sel-format"></select></label>
                     <label class="row"><span>Size</span><select id="sel-size"></select></label>
                     <label class="row"><span>Rate</span><select id="sel-fps"></select></label>

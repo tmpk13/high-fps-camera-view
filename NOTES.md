@@ -43,4 +43,10 @@
   is an exact multiple of the packet size so the host gets it immediately.
 - The firmware uses VID 0x2e8a PID 0x000a (the Pico SDK CDC defaults); the
   server finds the board by the product string `hfcv-trigger`, not by ids.
+- The camera re-enumerated once during testing (`/dev/video2` became
+  `/dev/video3`), so a fixed path is not enough. The server remembers the
+  card name of the last opened device and, when the path fails, searches the
+  capture nodes for the same name; the UI also offers a device picker.
+- Metadata nodes of a UVC camera report the same capability bits as the
+  video node, so the device list keeps only nodes that enumerate formats.
 - `pkill -f hfcv-server` matches the shell running it; use `pkill -x`.

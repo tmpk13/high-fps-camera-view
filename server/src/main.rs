@@ -1,5 +1,6 @@
 mod api;
 mod camera;
+mod devices;
 mod recording;
 mod trigger;
 
@@ -72,6 +73,7 @@ async fn main() -> Result<()> {
         target_s: 0.0,
         dropped_total: 0,
         process_us: 0.0,
+        card: String::new(),
         error: None,
         device: args.device.clone(),
         recording_generation: 0,

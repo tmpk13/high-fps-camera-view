@@ -42,7 +42,10 @@ mise run serve -- --device /dev/video0 --width 320 --height 240 --fps 240
 - Times come from the V4L2 frame timestamps, not from the nominal frame rate.
   The measured rate is shown next to the nominal one. See `NOTES.md` for why
   they differ on this camera.
-- **Camera** tab: format, size, rate and all V4L2 controls (exposure, gain...).
+- **Camera** tab: device picker with Reconnect, format, size, rate and all
+  V4L2 controls (exposure, gain...). When the camera is closed the live view
+  shows the error with Reconnect and Choose device buttons. If the camera
+  re-enumerates under a new path, Reconnect finds it again by name.
 - **Files** tab: save, reload, delete, and export an mp4 at a chosen playback rate.
 
 Press `?` in the UI for all shortcuts.

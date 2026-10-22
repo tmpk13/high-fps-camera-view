@@ -40,7 +40,8 @@ pub enum Cmd {
     Arm { pre_s: f64, post_s: f64 },
     Trigger,
     Stop,
-    Reopen,
+    /// Reopen the camera, optionally on a different device path.
+    Reopen { device: Option<String> },
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -65,6 +66,8 @@ pub struct Status {
     pub dropped_total: u32,
     /// Average time spent per frame in the capture thread, microseconds.
     pub process_us: f64,
+    /// Card name reported by the driver for the open device.
+    pub card: String,
     pub error: Option<String>,
     pub device: String,
     pub recording_generation: u64,
@@ -119,6 +122,7 @@ struct Capture {
     error: Option<String>,
     note: String,
     process_us: f64,
+    card: String,
 }
 
 pub fn run(shared: Arc<Shared>, dev_path: String, config: CamConfig, rx: Receiver<Cmd>) {
@@ -139,6 +143,7 @@ pub fn run(shared: Arc<Shared>, dev_path: String, config: CamConfig, rx: Receive
         error: None,
         note: String::new(),
         process_us: 0.0,
+        card: String::new(),
     };
     let mut next_open = Instant::now();
     loop {
@@ -198,8 +203,23 @@ pub fn run(shared: Arc<Shared>, dev_path: String, config: CamConfig, rx: Receive
 
 impl Capture {
     fn open(&mut self) -> Result<()> {
-        let dev = Device::with_path(&self.dev_path)
-            .with_context(|| format!("open {}", self.dev_path))?;
+        let dev = match Device::with_path(&self.dev_path) {
+            Ok(dev) => dev,
+            Err(e) if !self.card.is_empty() => {
+                // The camera may have re-enumerated under a new path; look for its name.
+                let devices = crate::devices::list_devices();
+                match crate::devices::find_by_card(&devices, &self.card, &self.dev_path) {
+                    Some(path) => {
+                        tracing::info!("{} gone, found {} at {path}", self.dev_path, self.card);
+                        self.dev_path = path.to_string();
+                        Device::with_path(&self.dev_path).with_context(|| format!("open {}", self.dev_path))?
+                    }
+                    None => return Err(anyhow::Error::new(e).context(format!("open {}", self.dev_path))),
+                }
+            }
+            Err(e) => return Err(anyhow::Error::new(e).context(format!("open {}", self.dev_path))),
+        };
+        self.card = dev.query_caps().map(|c| c.card).unwrap_or_default();
         let fourcc = fourcc_from(&self.config.fourcc)?;
         let fmt = Format::new(self.config.width, self.config.height, fourcc);
         let applied = dev.set_format(&fmt).context("set format")?;
@@ -248,9 +268,13 @@ impl Capture {
                     Err(e) => self.error = Some(format!("{e:#}")),
                 }
             }
-            Cmd::Reopen => {
+            Cmd::Reopen { device } => {
                 self.abort_capture();
                 self.close();
+                if let Some(path) = device {
+                    self.dev_path = path;
+                    self.card.clear();
+                }
                 match self.open() {
                     Ok(()) => self.error = None,
                     Err(e) => self.error = Some(format!("{e:#}")),
@@ -487,6 +511,7 @@ impl Capture {
             target_s,
             dropped_total: self.dropped_total,
             process_us: self.process_us,
+            card: self.card.clone(),
             error: self.error.clone(),
             device: self.dev_path.clone(),
             recording_generation: self.generation,

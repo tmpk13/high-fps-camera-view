@@ -144,16 +144,22 @@ store.on("view", () => {
     $("rec-overlay").hidden = !rec;
     $("rec-info").hidden = !rec;
     $("live-note").hidden = rec;
+    $("live-closed").hidden = rec || store.status?.state !== "closed";
     $("transport").hidden = !rec;
     $("timeline-wrap").hidden = !rec;
     document.querySelectorAll<HTMLButtonElement>(".mode-tabs .tab").forEach((b) => b.classList.toggle("active", b.dataset.view === store.view));
-    setLiveStream(!rec);
+    setLiveStream(!rec && store.status?.state !== "closed");
     if (!rec) store.setPlaying(false);
 });
 
 document.querySelectorAll<HTMLButtonElement>(".mode-tabs .tab").forEach((b) => {
     b.onclick = () => showView(b.dataset.view as View);
 });
+
+function showPanel(name: string): void {
+    setCollapsed(false);
+    document.querySelector<HTMLButtonElement>(`.side-tabs .tab[data-panel=${name}]`)?.click();
+}
 
 document.querySelectorAll<HTMLButtonElement>(".side-tabs .tab").forEach((b) => {
     b.onclick = () => {
@@ -190,6 +196,11 @@ btnArm.onclick = () => {
 };
 btnTrigger.onclick = () => api.trigger().catch((e) => toast((e as Error).message, "error"));
 btnStop.onclick = () => api.stop().catch((e) => toast((e as Error).message, "error"));
+$("btn-live-reopen").onclick = () => void cameraPanel.reopen();
+$("btn-live-choose").onclick = () => {
+    showPanel("camera");
+    void cameraPanel.refreshDevices();
+};
 
 function renderStatus(): void {
     const st = store.status;
@@ -229,7 +240,12 @@ function renderStatus(): void {
         const label = st.state === "armed" ? "pre-roll buffer" : st.state === "post" ? "post roll" : "recording";
         progressText.textContent = `${label}: ${st.elapsed_s.toFixed(2)} / ${st.target_s.toFixed(2)} s, ${st.frames_buffered} frames, ${fmtBytes(st.bytes_buffered)}`;
     }
-    $("live-note").textContent = st.state === "closed" ? (st.error ?? "camera closed") : `live preview is rate limited to 30 fps; capture runs at ${fmtFps(st.actual_fps)} fps`;
+    const closed = st.state === "closed";
+    $("live-note").textContent = closed ? "" : `live preview is rate limited to 30 fps; capture runs at ${fmtFps(st.actual_fps)} fps`;
+    $("live-closed").hidden = !closed || store.view !== "live";
+    $("live-closed-text").textContent = st.error ?? "camera closed";
+    // No preview request while the camera is closed; the stream would never deliver a frame.
+    setLiveStream(store.view === "live" && !closed);
 }
 
 store.on("status", renderStatus);

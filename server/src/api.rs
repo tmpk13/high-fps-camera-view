@@ -59,6 +59,7 @@ pub fn router(state: AppState, web_dir: PathBuf) -> Router {
         .route("/camera/controls", get(get_controls).post(set_control))
         .route("/camera/config", post(set_config))
         .route("/camera/reopen", post(reopen))
+        .route("/camera/devices", get(get_devices))
         .route("/capture/record", post(record))
         .route("/capture/arm", post(arm))
         .route("/capture/trigger", post(trigger_now))
@@ -236,9 +237,24 @@ async fn set_config(State(s): State<AppState>, Json(cfg): Json<CamConfig>) -> Ap
     Ok(ok())
 }
 
-async fn reopen(State(s): State<AppState>) -> ApiResult<Json<serde_json::Value>> {
-    s.cam_tx.send(Cmd::Reopen).map_err(|_| bad("camera thread gone"))?;
+#[derive(Deserialize, Default)]
+struct ReopenReq {
+    device: Option<String>,
+}
+
+async fn reopen(State(s): State<AppState>, body: Option<Json<ReopenReq>>) -> ApiResult<Json<serde_json::Value>> {
+    let device = body.and_then(|b| b.0.device).filter(|d| !d.trim().is_empty());
+    if let Some(d) = &device {
+        if !d.starts_with("/dev/") {
+            return Err(bad("device must be a /dev path"));
+        }
+    }
+    s.cam_tx.send(Cmd::Reopen { device }).map_err(|_| bad("camera thread gone"))?;
     Ok(ok())
+}
+
+async fn get_devices() -> Json<Vec<crate::devices::DeviceInfo>> {
+    Json(tokio::task::spawn_blocking(crate::devices::list_devices).await.unwrap_or_default())
 }
 
 #[derive(Deserialize)]

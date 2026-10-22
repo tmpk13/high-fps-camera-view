@@ -23,3 +23,6 @@
   viewer, drag handles for sidebar width and timeline height, full screen
   toggle, capture controls moved into a Capture tab with a thick collapse
   strip on the sidebar.
+- Middle mouse drag pans the viewer; sidebar tabs share the bar width and
+  shrink with it; camera reconnect from the live view and the Camera tab with
+  a device picker, plus name based recovery after USB re-enumeration.

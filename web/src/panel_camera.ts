@@ -1,6 +1,6 @@
 // Camera format and control editing.
 
-import { api, type ControlInfo, type FormatInfo } from "./api";
+import { api, type ControlInfo, type DeviceInfo, type FormatInfo } from "./api";
 import { $, debounce, el, toast } from "./dom";
 import { fmtFps } from "./format";
 import { store } from "./state";
@@ -10,6 +10,9 @@ export class CameraPanel {
     private selSize = $<HTMLSelectElement>("sel-size");
     private selFps = $<HTMLSelectElement>("sel-fps");
     private note = $("config-note");
+    private selDevice = $<HTMLSelectElement>("sel-device");
+    private deviceNote = $("device-note");
+    private devices: DeviceInfo[] = [];
     private form = $("controls-form");
     private formats: FormatInfo[] = [];
     private controls: ControlInfo[] = [];
@@ -19,6 +22,10 @@ export class CameraPanel {
         this.selFormat.onchange = () => this.fillSizes();
         this.selSize.onchange = () => this.fillFps();
         $("btn-apply-config").onclick = () => void this.apply();
+        $("btn-reopen").onclick = () => void this.reopen(this.selDevice.value || undefined);
+        $("btn-devices-refresh").onclick = () => void this.refreshDevices();
+        store.on("status", () => this.updateDeviceNote());
+        void this.refreshDevices();
         $("btn-controls-refresh").onclick = () => void this.loadControls();
         $("btn-controls-reset").onclick = () => void this.resetControls();
         store.on("status", () => this.updateNote());
@@ -87,6 +94,42 @@ export class CameraPanel {
         }
         if (st.config.fourcc !== "MJPG") parts.push(`Raw frames are JPEG encoded on the host (${st.process_us.toFixed(0)} us per frame).`);
         this.note.textContent = parts.join(" ");
+    }
+
+    async refreshDevices(): Promise<void> {
+        try {
+            this.devices = await api.devices();
+            const current = store.status?.device;
+            this.selDevice.replaceChildren(
+                ...this.devices.map((d) => el("option", { value: d.path, text: `${d.path}  ${d.card}` })),
+            );
+            if (current && this.devices.some((d) => d.path === current)) this.selDevice.value = current;
+            if (this.devices.length === 0) this.selDevice.append(el("option", { value: "", text: "no capture devices found" }));
+            this.updateDeviceNote();
+        } catch (e) {
+            toast((e as Error).message, "error");
+        }
+    }
+
+    private updateDeviceNote(): void {
+        const st = store.status;
+        if (!st) return;
+        this.deviceNote.textContent = st.state === "closed"
+            ? `${st.device} is not open: ${st.error ?? "closed"}. Pick a device and press Reconnect.`
+            : `Open: ${st.device} (${st.card || "unknown camera"}). If the camera re-enumerates under a new path the server looks for it by name on reconnect.`;
+    }
+
+    async reopen(device?: string): Promise<void> {
+        try {
+            await api.reopen(device);
+            toast("reconnecting camera...");
+            setTimeout(() => {
+                void this.refresh();
+                void this.refreshDevices();
+            }, 800);
+        } catch (e) {
+            toast(`reconnect failed: ${(e as Error).message}`, "error");
+        }
     }
 
     private async apply(): Promise<void> {

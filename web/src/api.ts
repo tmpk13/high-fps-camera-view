@@ -19,6 +19,7 @@ export interface Status {
     target_s: number;
     dropped_total: number;
     process_us: number;
+    card: string;
     error: string | null;
     device: string;
     recording_generation: number;
@@ -68,6 +69,7 @@ export interface ControlInfo {
     items: MenuEntry[];
 }
 
+export interface DeviceInfo { path: string; card: string; driver: string }
 export interface PortInfo { path: string; description: string; likely: boolean }
 export interface TriggerState { connected: boolean; port: string | null; last_lines: string[]; error: string | null }
 export interface SavedSummary {
@@ -114,7 +116,8 @@ export const api = {
     controls: () => req<ControlInfo[]>("GET", "/api/camera/controls"),
     setControl: (id: number, value: number) => req<unknown>("POST", "/api/camera/controls", { id, value }),
     setConfig: (cfg: CamConfig) => req<unknown>("POST", "/api/camera/config", cfg),
-    reopen: () => req<unknown>("POST", "/api/camera/reopen"),
+    reopen: (device?: string) => req<unknown>("POST", "/api/camera/reopen", { device: device ?? null }),
+    devices: () => req<DeviceInfo[]>("GET", "/api/camera/devices"),
     record: (duration_s: number) => req<unknown>("POST", "/api/capture/record", { duration_s }),
     arm: (pre_s: number, post_s: number) => req<unknown>("POST", "/api/capture/arm", { pre_s, post_s }),
     trigger: () => req<unknown>("POST", "/api/capture/trigger"),
