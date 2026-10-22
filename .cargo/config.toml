@@ -1,0 +1,4 @@
+# The embedded ESP shell exports LIBCLANG_PATH pointing at a clang without an
+# x86_64 backend, which breaks bindgen for the v4l bindings. Pin the system one.
+[env]
+LIBCLANG_PATH = { value = "/usr/lib/llvm-18/lib", force = true }

@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = ["server"]
+# The pico firmware is its own workspace (different target and profile).
+exclude = ["pico"]
+
+# Frame encoding and copying run in the capture thread; unoptimized
+# dependencies cannot keep up with the camera, so optimize them even in dev.
+[profile.dev.package."*"]
+opt-level = 3

@@ -1,0 +1,7 @@
+target/
+node_modules/
+web/dist/
+recordings/
+*.mjpg
+*.uf2
+.DS_Store
