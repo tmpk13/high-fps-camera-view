@@ -9,6 +9,8 @@ export class ViewZoom {
     private scale = 1;
     private ox = 0;
     private oy = 0;
+    private lastW = 0;
+    private lastH = 0;
 
     constructor(private host: HTMLElement, private layer: HTMLElement, private note: HTMLElement) {
         host.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
@@ -16,7 +18,7 @@ export class ViewZoom {
         host.addEventListener("dblclick", () => this.reset());
         // Keep the browser's middle click autoscroll out of the viewer.
         host.addEventListener("auxclick", (e) => e.preventDefault());
-        new ResizeObserver(() => this.apply()).observe(host);
+        new ResizeObserver(() => this.onResize()).observe(host);
     }
 
     reset(): void {
@@ -67,9 +69,26 @@ export class ViewZoom {
         this.host.addEventListener("pointercancel", up);
     }
 
+    /** The layer scales with the host, so keep the same normalized point under the host center. */
+    private onResize(): void {
+        const w = this.host.clientWidth;
+        const h = this.host.clientHeight;
+        if (this.lastW > 0 && this.lastH > 0 && this.scale > 1) {
+            const cxNorm = (this.lastW / 2 - this.ox) / (this.scale * this.lastW);
+            const cyNorm = (this.lastH / 2 - this.oy) / (this.scale * this.lastH);
+            this.ox = w / 2 - cxNorm * w * this.scale;
+            this.oy = h / 2 - cyNorm * h * this.scale;
+        }
+        this.lastW = w;
+        this.lastH = h;
+        this.apply();
+    }
+
     private apply(): void {
         const w = this.host.clientWidth;
         const h = this.host.clientHeight;
+        this.lastW = w;
+        this.lastH = h;
         if (this.scale <= 1) {
             this.ox = 0;
             this.oy = 0;

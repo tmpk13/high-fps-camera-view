@@ -138,11 +138,15 @@
                 </div>
                 <div class="table-scroll"><table class="markers" id="markers-table">
                     <thead>
-                        <tr><th>Ref</th><th>Name</th><th>Frame</th><th>Time</th><th>From prev</th><th>From ref</th><th></th></tr>
+                        <tr><th class="c-star" title="Reference marker">Ref</th><th>Name</th><th class="num c-frame">Frame</th><th class="num">Time (ms)</th><th class="num c-prev" title="Delta to the previous marker">Prev (ms)</th><th class="num c-ref" title="Delta to the reference marker">Ref (ms)</th><th></th></tr>
                     </thead>
                     <tbody></tbody>
                 </table></div>
-                <p class="muted small-text">Times come from the driver timestamp of each frame. Hover a delta to see the nominal value for a perfectly regular frame interval.</p>
+                <div class="compare" id="compare" hidden>
+                    <div class="panel-head"><span id="compare-title"></span><span class="grow"></span><button id="btn-compare-clear" class="small">Clear</button></div>
+                    <table class="markers" id="compare-table"><thead><tr><th>From</th><th>To</th><th class="num c-frame">Frames</th><th class="num">Measured (ms)</th><th class="num c-nom">Nominal (ms)</th></tr></thead><tbody></tbody></table>
+                </div>
+                <p class="muted small-text">Times come from the driver timestamp of each frame. Click a row to seek, Ctrl+click rows to compare them. Hover a delta to see the nominal value for a perfectly regular frame interval.</p>
             </div>
             <div class="panel" id="panel-camera">
                 <div class="form">

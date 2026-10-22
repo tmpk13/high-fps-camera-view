@@ -37,8 +37,10 @@ mise run serve -- --device /dev/video0 --width 320 --height 240 --fps 240
   toggles full screen. Sizes and the theme are remembered per browser.
 - `M` adds a marker on the current frame, `R` makes it the reference.
   The marker table shows each marker's time, the delta to the previous marker
-  and to the reference. `I` / `O` set a range whose length is shown on the
-  timeline. Markers are saved with the recording and can be exported as CSV.
+  and to the reference. Ctrl+click rows to compare any set of markers; the
+  pairwise and total deltas appear below the table and the range follows
+  them. `I` / `O` set a range whose length is shown on the timeline. Markers
+  are saved with the recording and can be exported as CSV.
 - Times come from the V4L2 frame timestamps, not from the nominal frame rate.
   The measured rate is shown next to the nominal one. See `NOTES.md` for why
   they differ on this camera.

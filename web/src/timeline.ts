@@ -244,11 +244,7 @@ export class Timeline {
                 const w = Math.min(thumbW, next - x - 1);
                 this.drawTile(th, i, x, top, w, thumbH);
                 wanted.push(i);
-                ctx.strokeStyle = th.line;
-                ctx.beginPath();
-                ctx.moveTo(Math.round(x) + 0.5, top);
-                ctx.lineTo(Math.round(x) + 0.5, top + thumbH);
-                ctx.stroke();
+                this.divider(th, x, top, thumbH);
             }
         } else {
             const slots = Math.ceil(this.width / thumbW);
@@ -258,8 +254,9 @@ export class Timeline {
                 const i = nearestFrame(ts, this.usOf(x + thumbW / 2));
                 if (i === prevFrame) continue;
                 prevFrame = i;
-                this.drawTile(th, i, x, top, thumbW - 1, thumbH);
+                this.drawTile(th, i, x, top, thumbW - 2, thumbH);
                 wanted.push(i);
+                if (k > 0) this.divider(th, x, top, thumbH);
             }
         }
         // Load the visible frames that are not cached yet, nearest to the playhead first.
@@ -269,6 +266,17 @@ export class Timeline {
             if (frames.inflight >= 8) break;
             void frames.load(i).catch(() => {});
         }
+    }
+
+    private divider(th: Theme, x: number, top: number, h: number): void {
+        const ctx = this.ctx;
+        ctx.strokeStyle = th.muted;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(Math.round(x), top);
+        ctx.lineTo(Math.round(x), top + h);
+        ctx.stroke();
+        ctx.lineWidth = 1;
     }
 
     private drawTile(th: Theme, i: number, x: number, y: number, w: number, h: number): void {

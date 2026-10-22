@@ -2,13 +2,14 @@
 
 import { api, type Marker } from "./api";
 import { $, debounce, download, el, toast } from "./dom";
-import { fmtUs, markerColor, markerRows, markersCsv, nextMarkerId, nominalUs } from "./format";
+import { fmtMs, fmtUs, markerColor, markerRows, markersCsv, nextMarkerId, nominalUs, sortedMarkers } from "./format";
 import { store } from "./state";
 
 export class MarkersPanel {
     private tbody: HTMLTableSectionElement;
     private summary = $("markers-summary");
     private persist = debounce(() => this.save(), 300);
+    private selected = new Set<number>();
 
     constructor() {
         const table = $<HTMLTableElement>("markers-table");
@@ -17,13 +18,22 @@ export class MarkersPanel {
             this.render();
             this.persist();
         });
-        store.on("recording", () => this.render());
+        store.on("recording", () => {
+            this.selected.clear();
+            this.render();
+            this.renderCompare();
+        });
         store.on("frame", () => this.highlight());
         $("btn-markers-csv").onclick = () => this.exportCsv();
         $("btn-markers-clear").onclick = () => {
             if (store.markers.length && confirm("Remove all markers?")) store.setMarkers([]);
         };
         $("btn-marker").onclick = () => this.addAtCurrent();
+        $("btn-compare-clear").onclick = () => {
+            this.selected.clear();
+            this.renderCompare();
+            this.highlight();
+        };
     }
 
     addAtCurrent(): void {
@@ -81,7 +91,49 @@ export class MarkersPanel {
     private highlight(): void {
         for (const tr of Array.from(this.tbody.rows)) {
             tr.classList.toggle("current", Number(tr.dataset.frame) === store.frame);
+            tr.classList.toggle("selected", this.selected.has(Number(tr.dataset.id)));
         }
+    }
+
+    /** Pairwise deltas between the ctrl-selected markers, in frame order, plus the total span. */
+    private renderCompare(): void {
+        const meta = store.meta;
+        const box = $("compare");
+        const table = $<HTMLTableElement>("compare-table");
+        const body = table.tBodies[0] as HTMLTableSectionElement;
+        for (const id of [...this.selected]) if (!store.markers.some((m) => m.id === id)) this.selected.delete(id);
+        const chosen = sortedMarkers(store.markers.filter((m) => this.selected.has(m.id)));
+        body.replaceChildren();
+        if (!meta || chosen.length < 2) {
+            box.hidden = chosen.length === 0;
+            $("compare-title").textContent = chosen.length === 1 ? `Ctrl+click another marker to compare with ${chosen[0]?.name}` : "";
+            return;
+        }
+        box.hidden = false;
+        const ts = store.timestamps;
+        const row = (a: typeof chosen[number], b: typeof chosen[number]) => {
+            const frames = b.frame - a.frame;
+            const dt = (ts[b.frame] ?? 0) - (ts[a.frame] ?? 0);
+            return el(
+                "tr",
+                {},
+                el("td", { text: a.name }),
+                el("td", { text: b.name }),
+                el("td", { class: "num c-frame", text: String(frames) }),
+                el("td", { class: "num", text: fmtMs(dt) }),
+                el("td", { class: "num c-nom", text: fmtMs(nominalUs(frames, meta.fps_measured)) }),
+            );
+        };
+        for (let i = 1; i < chosen.length; i++) body.append(row(chosen[i - 1]!, chosen[i]!));
+        if (chosen.length > 2) {
+            const total = row(chosen[0]!, chosen[chosen.length - 1]!);
+            total.style.fontWeight = "600";
+            body.append(total);
+        }
+        const first = chosen[0]!;
+        const last = chosen[chosen.length - 1]!;
+        $("compare-title").textContent = `Comparing ${chosen.length} markers: ${fmtUs((ts[last.frame] ?? 0) - (ts[first.frame] ?? 0))} over ${last.frame - first.frame} frames`;
+        store.setRange({ a: first.frame, b: last.frame });
     }
 
     private render(): void {
@@ -112,23 +164,34 @@ export class MarkersPanel {
                 e.stopPropagation();
                 store.setMarkers(store.markers.filter((x) => x.id !== m.id));
             };
-            const prev = r.fromPrevUs === null ? "" : `${fmtUs(r.fromPrevUs, true)} / ${r.fromPrevFrames} f`;
-            const prevTitle = r.fromPrevFrames === null ? "" : `nominal ${fmtUs(nominalUs(r.fromPrevFrames, meta.fps_measured), true)} at ${meta.fps_measured.toFixed(2)} fps`;
-            const ref = r.fromRefUs === null ? (isRef ? "ref" : "") : `${fmtUs(r.fromRefUs, true)} / ${r.fromRefFrames} f`;
+            const prev = r.fromPrevUs === null ? "" : fmtMs(r.fromPrevUs);
+            const prevTitle = r.fromPrevFrames === null ? "" : `${r.fromPrevFrames} frames, nominal ${fmtMs(nominalUs(r.fromPrevFrames, meta.fps_measured))} ms at ${meta.fps_measured.toFixed(2)} fps`;
+            const ref = r.fromRefUs === null ? (isRef ? "ref" : "") : fmtMs(r.fromRefUs);
+            const refTitle = r.fromRefFrames === null ? "" : `${r.fromRefFrames} frames from the reference`;
             const tr = el(
                 "tr",
-                { "data-frame": String(m.frame) },
-                el("td", {}, refBtn),
-                el("td", {}, el("span", { class: "swatch", style: `background:${m.color}` }), name),
-                el("td", { text: String(m.frame) }),
-                el("td", { text: fmtUs(r.timeUs) }),
-                el("td", { text: prev, title: prevTitle }),
-                el("td", { text: ref }),
+                { "data-frame": String(m.frame), "data-id": String(m.id) },
+                el("td", { class: "c-star" }, refBtn),
+                el("td", { class: "name" }, el("span", {}, el("span", { class: "swatch", style: `background:${m.color}` }), name)),
+                el("td", { class: "num c-frame", text: String(m.frame) }),
+                el("td", { class: "num", text: fmtMs(r.timeUs) }),
+                el("td", { class: "num c-prev", text: prev, title: prevTitle }),
+                el("td", { class: "num c-ref", text: ref, title: refTitle }),
                 el("td", {}, del),
             );
-            tr.onclick = () => store.setFrame(m.frame);
+            tr.onclick = (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    if (this.selected.has(m.id)) this.selected.delete(m.id);
+                    else this.selected.add(m.id);
+                    this.renderCompare();
+                    this.highlight();
+                    return;
+                }
+                store.setFrame(m.frame);
+            };
             this.tbody.append(tr);
         }
         this.highlight();
+        this.renderCompare();
     }
 }

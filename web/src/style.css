@@ -222,7 +222,7 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: clamp(0.7rem, 4.2cqi, 1rem);
+    font-size: clamp(0.6rem, 4.2cqi, 1rem);
 }
 .panel { display: none; padding: 0.8rem; overflow: auto; flex: 1; min-height: 0; }
 .panel.active { display: block; }
@@ -326,11 +326,20 @@ body.resizing, body.resizing * { cursor: inherit !important; user-select: none; 
 
 /* Markers table */
 .table-scroll { overflow-x: auto; }
-table.markers { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 0.85em; }
-table.markers th { text-align: left; color: var(--fg-muted); font-weight: normal; padding: 0.2em 0.3em; border-bottom: 0.0625rem solid var(--line); }
-table.markers td { padding: 0.2em 0.3em; border-bottom: 0.0625rem solid var(--line); white-space: nowrap; }
+table.markers { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: clamp(0.65rem, 2.6cqi, 0.85rem); table-layout: auto; }
+table.markers th { text-align: left; color: var(--fg-muted); font-weight: normal; padding: 0.2em 0.25em; border-bottom: 0.0625rem solid var(--line); white-space: nowrap; }
+table.markers td { padding: 0.15em 0.25em; border-bottom: 0.0625rem solid var(--line); white-space: nowrap; }
+table.markers th.num, table.markers td.num { text-align: right; }
+table.markers td.name { width: 100%; min-width: 4em; }
+table.markers td.name > span { display: flex; align-items: center; gap: 0.2em; }
 table.markers tr.current td { background: color-mix(in srgb, var(--accent) 15%, transparent); }
-table.markers input[type="text"] { width: 100%; padding: 0.1em 0.3em; font-family: var(--mono); background: transparent; border-color: transparent; }
+table.markers tr.selected td { background: color-mix(in srgb, var(--cyan) 22%, transparent); }
+table.markers tbody tr { cursor: pointer; }
+table.markers input[type="text"] { width: 100%; min-width: 0; padding: 0.1em 0.2em; font-family: var(--mono); font-size: inherit; background: transparent; border-color: transparent; }
+.compare { margin-top: 0.8rem; }
+/* Narrow sidebars drop the derived columns first; the deltas stay in the row tooltips. */
+@container (max-width: 22rem) { table.markers .c-ref, table.markers .c-nom { display: none; } }
+@container (max-width: 17.5rem) { table.markers .c-prev, table.markers .c-frame { display: none; } }
 table.markers input[type="text"]:focus { border-color: var(--line); background: var(--bg); }
 .swatch { display: inline-block; width: 0.8em; height: 0.8em; border-radius: 50%; margin-right: 0.3em; vertical-align: middle; }
 .ref-btn { background: transparent; border: none; padding: 0 0.2em; color: var(--fg-muted); }

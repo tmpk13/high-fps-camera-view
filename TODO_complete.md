@@ -26,3 +26,6 @@
 - Middle mouse drag pans the viewer; sidebar tabs share the bar width and
   shrink with it; camera reconnect from the live view and the Camera tab with
   a device picker, plus name based recovery after USB re-enumeration.
+- Viewer keeps its zoom center on window resize, thicker timeline frame
+  dividers, ctrl-click marker comparison table, marker table with units in
+  the headers and columns that collapse with the sidebar width.
