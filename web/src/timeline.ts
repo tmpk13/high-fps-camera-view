@@ -439,7 +439,6 @@ export class Timeline {
         const x = this.localX(e);
         const y = this.localY(e);
         this.canvas.setPointerCapture(e.pointerId);
-        store.setPlaying(false);
         const marker = this.markerAt(x, th);
         if (marker && !e.shiftKey) {
             this.drag = "marker";

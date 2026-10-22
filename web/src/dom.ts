@@ -48,3 +48,56 @@ export function download(filename: string, text: string, type = "text/csv"): voi
     a.remove();
     URL.revokeObjectURL(url);
 }
+
+/** Pointer drag on a handle: `onMove` gets deltas since the previous event, `onClick` fires for a tap without movement. */
+export function dragHandle(handle: HTMLElement, onMove: (dx: number, dy: number) => void, onClick?: () => void, onEnd?: () => void): void {
+    handle.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        let lastX = e.clientX;
+        let lastY = e.clientY;
+        let moved = false;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        document.body.classList.add("resizing");
+        document.body.style.cursor = getComputedStyle(handle).cursor;
+        const move = (ev: PointerEvent) => {
+            if (Math.abs(ev.clientX - startX) + Math.abs(ev.clientY - startY) > 3) moved = true;
+            if (moved) onMove(ev.clientX - lastX, ev.clientY - lastY);
+            lastX = ev.clientX;
+            lastY = ev.clientY;
+        };
+        const up = () => {
+            handle.removeEventListener("pointermove", move);
+            handle.removeEventListener("pointerup", up);
+            handle.removeEventListener("pointercancel", up);
+            document.body.classList.remove("resizing");
+            document.body.style.cursor = "";
+            if (!moved) onClick?.();
+            onEnd?.();
+        };
+        handle.addEventListener("pointermove", move);
+        handle.addEventListener("pointerup", up);
+        handle.addEventListener("pointercancel", up);
+    });
+}
+
+export function remPx(): number {
+    return parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+}
+
+export function storageGet(key: string): string | null {
+    try {
+        return localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+export function storageSet(key: string, value: string): void {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        // storage unavailable
+    }
+}

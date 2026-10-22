@@ -126,10 +126,7 @@ export class MarkersPanel {
                 el("td", { text: ref }),
                 el("td", {}, del),
             );
-            tr.onclick = () => {
-                store.setPlaying(false);
-                store.setFrame(m.frame);
-            };
+            tr.onclick = () => store.setFrame(m.frame);
             this.tbody.append(tr);
         }
         this.highlight();

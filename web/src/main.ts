@@ -1,7 +1,7 @@
 // Entry point: wires the server connection, capture controls, views, panels and keyboard.
 
 import { api, type ServerEvent } from "./api";
-import { $, toast } from "./dom";
+import { $, dragHandle, remPx, storageGet, storageSet, toast } from "./dom";
 import { fmtBytes, fmtFps } from "./format";
 import { frames } from "./frames";
 import { CameraPanel } from "./panel_camera";
@@ -11,6 +11,7 @@ import { TriggerPanel } from "./panel_trigger";
 import { store, type View } from "./state";
 import { Timeline } from "./timeline";
 import { Viewer } from "./viewer";
+import { ViewZoom } from "./viewzoom";
 
 // ---- theme ----
 
@@ -43,6 +44,62 @@ $("btn-theme").onclick = () => {
 };
 $("btn-help").onclick = () => $<HTMLDialogElement>("help-dialog").showModal();
 
+// ---- full screen ----
+
+function toggleFullscreen(): void {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen().catch(() => toast("full screen not available", "error"));
+}
+$("btn-fullscreen").onclick = toggleFullscreen;
+document.addEventListener("fullscreenchange", () => {
+    $("btn-fullscreen").textContent = document.fullscreenElement ? "exit full screen" : "full screen";
+});
+
+// ---- resizable sidebar and timeline ----
+
+const layout = document.querySelector<HTMLElement>(".layout");
+const sidebar = $("sidebar");
+if (!layout) throw new Error("missing layout");
+{
+    const savedW = storageGet("sidebar-w");
+    if (savedW) sidebar.style.setProperty("--sidebar-w", savedW);
+    const savedH = storageGet("timeline-h");
+    if (savedH) $("timeline-wrap").style.setProperty("--timeline-h", savedH);
+    if (storageGet("sidebar-collapsed") === "1") layout.classList.add("side-collapsed");
+}
+
+function setCollapsed(collapsed: boolean): void {
+    layout?.classList.toggle("side-collapsed", collapsed);
+    $("side-chev").textContent = collapsed ? "<" : ">";
+    storageSet("sidebar-collapsed", collapsed ? "1" : "0");
+}
+setCollapsed(layout.classList.contains("side-collapsed"));
+
+dragHandle(
+    $("side-handle"),
+    (dx) => {
+        if (layout.classList.contains("side-collapsed")) {
+            if (dx < -8) setCollapsed(false);
+            return;
+        }
+        const w = Math.max(14 * remPx(), sidebar.getBoundingClientRect().width - dx);
+        sidebar.style.setProperty("--sidebar-w", `${(w / remPx()).toFixed(2)}rem`);
+    },
+    () => setCollapsed(!layout.classList.contains("side-collapsed")),
+    () => storageSet("sidebar-w", sidebar.style.getPropertyValue("--sidebar-w")),
+);
+
+dragHandle(
+    $("timeline-handle"),
+    (_dx, dy) => {
+        const wrap = $("timeline-wrap");
+        const h = Math.min(window.innerHeight * 0.6, Math.max(4 * remPx(), $("timeline").getBoundingClientRect().height - dy));
+        wrap.style.setProperty("--timeline-h", `${(h / remPx()).toFixed(2)}rem`);
+    },
+    undefined,
+    () => storageSet("timeline-h", $("timeline-wrap").style.getPropertyValue("--timeline-h")),
+);
+
 // ---- views and panels ----
 
 const viewer = new Viewer();
@@ -58,6 +115,8 @@ const timeline = new Timeline(
     (m) => markersPanel.rename(m),
 );
 
+const viewZoom = new ViewZoom($("viewer"), $("zoom-layer"), $("zoom-note"));
+void viewZoom;
 const liveImg = $<HTMLImageElement>("live-img");
 let liveStreamOn = false;
 
@@ -82,6 +141,9 @@ store.on("view", () => {
     const rec = store.view === "recording";
     $("view-live").hidden = rec;
     $("view-rec").hidden = !rec;
+    $("rec-overlay").hidden = !rec;
+    $("rec-info").hidden = !rec;
+    $("live-note").hidden = rec;
     $("transport").hidden = !rec;
     $("timeline-wrap").hidden = !rec;
     document.querySelectorAll<HTMLButtonElement>(".mode-tabs .tab").forEach((b) => b.classList.toggle("active", b.dataset.view === store.view));
@@ -97,6 +159,7 @@ document.querySelectorAll<HTMLButtonElement>(".side-tabs .tab").forEach((b) => {
     b.onclick = () => {
         document.querySelectorAll<HTMLButtonElement>(".side-tabs .tab").forEach((x) => x.classList.toggle("active", x === b));
         document.querySelectorAll<HTMLElement>(".panel").forEach((p) => p.classList.toggle("active", p.id === `panel-${b.dataset.panel}`));
+        $("side-label").textContent = b.textContent ?? "";
         if (b.dataset.panel === "camera") cameraPanel.ensureLoaded();
         if (b.dataset.panel === "files") void filesPanel.refresh();
     };
@@ -141,7 +204,12 @@ function renderStatus(): void {
         armed: "armed",
         post: "post roll",
     };
-    pillCam.textContent = st.error ? `camera: ${st.error}` : `${names[st.state] ?? st.state}  ${st.config.width}x${st.config.height} ${st.config.fourcc}`;
+    const busyText = st.target_s > 0 ? ` ${st.elapsed_s.toFixed(1)} / ${st.target_s.toFixed(1)} s` : "";
+    pillCam.textContent = st.error
+        ? `camera: ${st.error}`
+        : st.state === "idle" || st.state === "closed"
+          ? `${names[st.state] ?? st.state}  ${st.config.width}x${st.config.height} ${st.config.fourcc}`
+          : `${names[st.state] ?? st.state}${busyText}`;
     pillCam.className = `pill ${st.error ? "bad" : st.state === "idle" ? "ok" : st.state === "closed" ? "warn" : "busy"}`;
     pillFps.textContent = `${fmtFps(st.actual_fps)} fps`;
     pillFps.className = `pill ${st.actual_fps > 0 ? "ok" : ""}`;
@@ -239,6 +307,11 @@ document.addEventListener("keydown", (e) => {
     if (isTyping(e)) return;
     if (e.key === "t" && store.status?.state === "armed") {
         void api.trigger();
+        e.preventDefault();
+        return;
+    }
+    if (e.key === "f" || e.key === "F") {
+        toggleFullscreen();
         e.preventDefault();
         return;
     }

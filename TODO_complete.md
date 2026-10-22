@@ -18,3 +18,8 @@
 - Tests: server unit tests, UI helper tests, protocol parser tests; live
   camera smoke tests for every mode and a virtual serial port trigger test.
 - mise tasks, README, ARCHITECTURE with mermaid diagrams and Gantt, NOTES.
+- UI follow-up: timeline clicks and marker jumps seek without pausing
+  playback (real-time mode re-bases on seek), wheel zoom with drag pan on the
+  viewer, drag handles for sidebar width and timeline height, full screen
+  toggle, capture controls moved into a Capture tab with a thick collapse
+  strip on the sidebar.

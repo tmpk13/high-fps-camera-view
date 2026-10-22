@@ -25,11 +25,16 @@ mise run serve -- --device /dev/video0 --width 320 --height 240 --fps 240
 
 ## Using the UI
 
-- **Record** captures for the duration in the box. **Arm** keeps a rolling
-  pre-roll buffer and finishes post-roll seconds after a trigger. Trigger from
-  the button, the `T` key, or the pico board.
+- **Capture** tab: **Record** captures for the chosen duration. **Arm** keeps
+  a rolling pre-roll buffer and finishes post-roll seconds after a trigger
+  from the button, the `T` key, or the pico board.
 - The **timeline** shows preview frames; scroll to zoom, drag the ruler to pan,
-  click to seek. Hovering shows the frame under the cursor with its time.
+  click to seek (playback keeps running). Hovering shows the frame under the
+  cursor with its time. The viewer zooms with the wheel too, drag to pan and
+  double click to reset.
+- The sidebar's thick left strip collapses it on click and resizes it on drag;
+  the bar above the timeline resizes the timeline. `F` or the top bar button
+  toggles full screen. Sizes and the theme are remembered per browser.
 - `M` adds a marker on the current frame, `R` makes it the reference.
   The marker table shows each marker's time, the delta to the previous marker
   and to the reference. `I` / `O` set a range whose length is shown on the

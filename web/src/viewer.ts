@@ -58,10 +58,7 @@ export class Viewer {
         const sorted = [...store.markers].sort((a, b) => a.frame - b.frame);
         const f = store.frame;
         const target = dir > 0 ? sorted.find((m) => m.frame > f) : [...sorted].reverse().find((m) => m.frame < f);
-        if (target) {
-            store.setPlaying(false);
-            store.setFrame(target.frame);
-        }
+        if (target) store.setFrame(target.frame);
     }
 
     setIn(): void {
@@ -164,11 +161,18 @@ export class Viewer {
         const speed = this.selSpeed.value;
         if (speed === "realtime") {
             const ts = store.timestamps;
-            const startWall = performance.now();
-            const startUs = ts[store.frame] ?? 0;
+            let startWall = performance.now();
+            let startUs = ts[store.frame] ?? 0;
+            let lastSet = store.frame;
             const tick = () => {
+                if (store.frame !== lastSet) {
+                    // Someone seeked (timeline click, marker jump): continue from there.
+                    startWall = performance.now();
+                    startUs = ts[store.frame] ?? 0;
+                }
                 const elapsed = (performance.now() - startWall) * 1000;
                 const f = frameAtOrBefore(ts, startUs + elapsed);
+                lastSet = f;
                 store.setFrame(f);
                 if (f >= meta.frame_count - 1) {
                     store.setPlaying(false);

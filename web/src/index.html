@@ -21,6 +21,7 @@
             <span class="pill" id="pill-link" title="Connection to the capture server">connecting</span>
         </div>
         <div class="topbar-actions">
+            <button id="btn-fullscreen" class="icon-btn" title="Full screen (F)">full screen</button>
             <button id="btn-theme" class="icon-btn" title="Toggle light / dark">theme</button>
             <button id="btn-help" class="icon-btn" title="Keyboard shortcuts">?</button>
         </div>
@@ -33,48 +34,25 @@
                     <button class="tab active" data-view="live" role="tab">Live</button>
                     <button class="tab" data-view="recording" role="tab" id="tab-recording" disabled>Recording</button>
                 </div>
-                <div class="capture-controls" id="capture-controls">
-                    <label class="field">
-                        <span>Duration</span>
-                        <input type="number" id="in-duration" min="0.01" step="0.1" value="2">
-                        <span class="unit">s</span>
-                    </label>
-                    <button id="btn-record" class="primary">Record</button>
-                    <span class="sep"></span>
-                    <label class="field">
-                        <span>Pre</span>
-                        <input type="number" id="in-pre" min="0" step="0.1" value="1">
-                        <span class="unit">s</span>
-                    </label>
-                    <label class="field">
-                        <span>Post</span>
-                        <input type="number" id="in-post" min="0" step="0.1" value="1">
-                        <span class="unit">s</span>
-                    </label>
-                    <button id="btn-arm">Arm</button>
-                    <button id="btn-trigger" disabled>Trigger</button>
-                    <button id="btn-stop" class="danger" disabled>Stop</button>
-                </div>
-                <div class="progress" id="capture-progress" hidden>
-                    <div class="progress-bar" id="capture-progress-bar"></div>
-                    <span class="progress-text" id="capture-progress-text"></span>
-                </div>
             </div>
 
             <div class="viewer" id="viewer">
-                <div class="view-live" id="view-live">
-                    <img id="live-img" alt="Live camera preview">
-                    <div class="view-note" id="live-note"></div>
-                </div>
-                <div class="view-rec" id="view-rec" hidden>
-                    <img id="rec-img" alt="Recorded frame">
-                    <div class="overlay top-left" id="rec-overlay">
-                        <span id="ov-frame"></span>
-                        <span id="ov-time"></span>
-                        <span id="ov-ref" class="muted"></span>
+                <div class="zoom-layer" id="zoom-layer">
+                    <div class="view-live" id="view-live">
+                        <img id="live-img" alt="Live camera preview">
                     </div>
-                    <div class="overlay bottom-left muted" id="rec-info"></div>
+                    <div class="view-rec" id="view-rec" hidden>
+                        <img id="rec-img" alt="Recorded frame">
+                    </div>
                 </div>
+                <div class="view-note" id="live-note"></div>
+                <div class="overlay top-left" id="rec-overlay" hidden>
+                    <span id="ov-frame"></span>
+                    <span id="ov-time"></span>
+                    <span id="ov-ref" class="muted"></span>
+                </div>
+                <div class="overlay bottom-left muted" id="rec-info" hidden></div>
+                <div class="overlay bottom-right muted" id="zoom-note" hidden></div>
             </div>
 
             <div class="transport" id="transport" hidden>
@@ -109,6 +87,7 @@
             </div>
 
             <div class="timeline-wrap" id="timeline-wrap" hidden>
+                <div class="h-handle" id="timeline-handle" title="Drag to resize the timeline"><span></span></div>
                 <canvas id="timeline" aria-label="Timeline"></canvas>
                 <div class="hover-card" id="hover-card" hidden>
                     <img id="hover-img" alt="">
@@ -118,14 +97,35 @@
             </div>
         </section>
 
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar">
+            <div class="side-handle" id="side-handle" title="Drag to resize, click to collapse"><span class="chev" id="side-chev">&gt;</span><span class="side-label" id="side-label">Capture</span></div>
+            <div class="side-content" id="side-content">
             <nav class="side-tabs" role="tablist">
-                <button class="tab active" data-panel="markers">Markers</button>
+                <button class="tab active" data-panel="capture">Capture</button>
+                <button class="tab" data-panel="markers">Markers</button>
                 <button class="tab" data-panel="camera">Camera</button>
                 <button class="tab" data-panel="trigger">Trigger</button>
                 <button class="tab" data-panel="files">Files</button>
             </nav>
-            <div class="panel active" id="panel-markers">
+            <div class="panel active" id="panel-capture">
+                <div class="form" id="capture-controls">
+                    <h3 class="first">Timed</h3>
+                    <label class="row"><span>Duration</span><span class="inline"><input type="number" id="in-duration" min="0.01" step="0.1" value="2"><span class="unit">s</span></span></label>
+                    <div class="row"><span></span><button id="btn-record" class="primary">Record</button></div>
+                    <h3>Armed</h3>
+                    <label class="row"><span>Pre-roll</span><span class="inline"><input type="number" id="in-pre" min="0" step="0.1" value="1"><span class="unit">s</span></span></label>
+                    <label class="row"><span>Post-roll</span><span class="inline"><input type="number" id="in-post" min="0" step="0.1" value="1"><span class="unit">s</span></span></label>
+                    <div class="row"><span></span><span class="btn-row"><button id="btn-arm">Arm</button><button id="btn-trigger" disabled>Trigger</button></span></div>
+                    <h3>Running</h3>
+                    <div class="progress" id="capture-progress" hidden>
+                        <div class="progress-bar" id="capture-progress-bar"></div>
+                        <span class="progress-text" id="capture-progress-text"></span>
+                    </div>
+                    <div class="row"><span></span><button id="btn-stop" class="danger" disabled>Stop</button></div>
+                    <p class="muted small-text">Armed capture keeps a rolling pre-roll buffer and finishes post-roll seconds after a trigger from the Trigger button, the T key or the pico board. Recordings stay in memory until saved.</p>
+                </div>
+            </div>
+            <div class="panel" id="panel-markers">
                 <div class="panel-head">
                     <span class="muted" id="markers-summary">No recording</span>
                     <span class="grow"></span>
@@ -183,6 +183,7 @@
                 <h3>Saved recordings</h3>
                 <ul class="saved-list" id="saved-list"></ul>
             </div>
+            </div>
         </aside>
     </main>
 
@@ -198,6 +199,9 @@
             <tr><td>I / O</td><td>set range start / end</td></tr>
             <tr><td>Delete</td><td>remove the marker at the current frame</td></tr>
             <tr><td>T</td><td>fire the trigger while armed</td></tr>
+            <tr><td>F</td><td>toggle full screen</td></tr>
+            <tr><td>A</td><td>zoom the timeline to the whole recording</td></tr>
+            <tr><td>wheel / drag</td><td>zoom and pan the viewer or the timeline; double click the viewer to reset</td></tr>
             <tr><td>Escape</td><td>stop playback, close dialogs</td></tr>
         </table>
         <form method="dialog"><button>Close</button></form>
