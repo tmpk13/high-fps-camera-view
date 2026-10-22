@@ -1,0 +1,56 @@
+[tasks.web-install]
+description = "Install web UI dependencies"
+dir = "web"
+run = "bun install"
+
+[tasks.web-build]
+description = "Bundle the web UI into web/dist"
+dir = "web"
+run = "bun run build"
+
+[tasks.web-dev]
+description = "Rebuild the web UI on every change"
+dir = "web"
+run = "bun run dev"
+
+[tasks.web-check]
+description = "Type check the web UI"
+dir = "web"
+run = "bunx tsc --noEmit"
+
+[tasks.build]
+description = "Build server and web UI"
+depends = ["web-build"]
+run = "cargo build"
+
+[tasks.serve]
+description = "Build everything and run the server (extra args go to the server)"
+depends = ["web-build"]
+run = "cargo run --bin hfcv-server --"
+
+[tasks.test]
+description = "Run server, web and protocol tests"
+run = [
+    "cargo test",
+    "cd web && bun test",
+    "cd pico/protocol && cargo test --target x86_64-unknown-linux-gnu",
+]
+
+[tasks.camera-info]
+description = "List formats, rates and controls of the camera"
+run = "v4l2-ctl -d ${CAMERA:-/dev/video2} --list-formats-ext && v4l2-ctl -d ${CAMERA:-/dev/video2} --list-ctrls-menus"
+
+[tasks.pico-build]
+description = "Build the trigger firmware"
+dir = "pico"
+run = "cargo build --release"
+
+[tasks.pico-uf2]
+description = "Build the trigger firmware and write pico/target/hfcv-trigger.uf2"
+dir = "pico"
+run = "cargo build --release && elf2uf2-rs target/thumbv6m-none-eabi/release/hfcv-trigger target/hfcv-trigger.uf2"
+
+[tasks.pico-flash]
+description = "Build and copy the firmware to a pico mounted in BOOTSEL mode"
+dir = "pico"
+run = "cargo run --release"

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>High FPS Camera View</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect width=%2716%27 height=%2716%27 rx=%273%27 fill=%27%23268bd2%27/%3E%3Ccircle cx=%278%27 cy=%278%27 r=%274%27 fill=%27%23fdf6e3%27/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="./style.css">
+    <script type="module" src="./main.ts"></script>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-name">High FPS Camera View</span>
+        </div>
+        <div class="pills" id="status-pills">
+            <span class="pill" id="pill-camera" title="Camera state">camera</span>
+            <span class="pill" id="pill-fps" title="Measured frame rate from driver timestamps">-- fps</span>
+            <span class="pill" id="pill-dropped" title="Frames the driver skipped since the stream started">0 dropped</span>
+            <span class="pill" id="pill-trigger" title="Trigger board link">no trigger board</span>
+            <span class="pill" id="pill-link" title="Connection to the capture server">connecting</span>
+        </div>
+        <div class="topbar-actions">
+            <button id="btn-theme" class="icon-btn" title="Toggle light / dark">theme</button>
+            <button id="btn-help" class="icon-btn" title="Keyboard shortcuts">?</button>
+        </div>
+    </header>
+
+    <main class="layout">
+        <section class="stage">
+            <div class="capture-bar">
+                <div class="mode-tabs" role="tablist">
+                    <button class="tab active" data-view="live" role="tab">Live</button>
+                    <button class="tab" data-view="recording" role="tab" id="tab-recording" disabled>Recording</button>
+                </div>
+                <div class="capture-controls" id="capture-controls">
+                    <label class="field">
+                        <span>Duration</span>
+                        <input type="number" id="in-duration" min="0.01" step="0.1" value="2">
+                        <span class="unit">s</span>
+                    </label>
+                    <button id="btn-record" class="primary">Record</button>
+                    <span class="sep"></span>
+                    <label class="field">
+                        <span>Pre</span>
+                        <input type="number" id="in-pre" min="0" step="0.1" value="1">
+                        <span class="unit">s</span>
+                    </label>
+                    <label class="field">
+                        <span>Post</span>
+                        <input type="number" id="in-post" min="0" step="0.1" value="1">
+                        <span class="unit">s</span>
+                    </label>
+                    <button id="btn-arm">Arm</button>
+                    <button id="btn-trigger" disabled>Trigger</button>
+                    <button id="btn-stop" class="danger" disabled>Stop</button>
+                </div>
+                <div class="progress" id="capture-progress" hidden>
+                    <div class="progress-bar" id="capture-progress-bar"></div>
+                    <span class="progress-text" id="capture-progress-text"></span>
+                </div>
+            </div>
+
+            <div class="viewer" id="viewer">
+                <div class="view-live" id="view-live">
+                    <img id="live-img" alt="Live camera preview">
+                    <div class="view-note" id="live-note"></div>
+                </div>
+                <div class="view-rec" id="view-rec" hidden>
+                    <img id="rec-img" alt="Recorded frame">
+                    <div class="overlay top-left" id="rec-overlay">
+                        <span id="ov-frame"></span>
+                        <span id="ov-time"></span>
+                        <span id="ov-ref" class="muted"></span>
+                    </div>
+                    <div class="overlay bottom-left muted" id="rec-info"></div>
+                </div>
+            </div>
+
+            <div class="transport" id="transport" hidden>
+                <button id="btn-first" title="First frame (Home)">|&lt;</button>
+                <button id="btn-prev-marker" title="Previous marker ([)">|&lt;&lt;</button>
+                <button id="btn-prev" title="Previous frame (Left)">&lt;</button>
+                <button id="btn-play" title="Play / pause (Space)">Play</button>
+                <button id="btn-next" title="Next frame (Right)">&gt;</button>
+                <button id="btn-next-marker" title="Next marker (])">&gt;&gt;|</button>
+                <button id="btn-last" title="Last frame (End)">&gt;|</button>
+                <label class="field">
+                    <span>Frame</span>
+                    <input type="number" id="in-frame" min="0" value="0">
+                    <span id="frame-total" class="unit"></span>
+                </label>
+                <label class="field">
+                    <span>Playback</span>
+                    <select id="sel-speed">
+                        <option value="2">2 fps</option>
+                        <option value="5">5 fps</option>
+                        <option value="10">10 fps</option>
+                        <option value="30" selected>30 fps</option>
+                        <option value="60">60 fps</option>
+                        <option value="realtime">real time</option>
+                    </select>
+                </label>
+                <span class="sep"></span>
+                <button id="btn-marker" class="accent" title="Add marker at this frame (M)">+ Marker</button>
+                <button id="btn-set-in" title="Set range start (I)">In</button>
+                <button id="btn-set-out" title="Set range end (O)">Out</button>
+                <span id="range-readout" class="readout"></span>
+            </div>
+
+            <div class="timeline-wrap" id="timeline-wrap" hidden>
+                <canvas id="timeline" aria-label="Timeline"></canvas>
+                <div class="hover-card" id="hover-card" hidden>
+                    <img id="hover-img" alt="">
+                    <div class="hover-text" id="hover-text"></div>
+                </div>
+                <div class="timeline-hint muted">scroll to zoom, drag ruler to pan, click to seek, drag markers to move them, double click a marker to rename</div>
+            </div>
+        </section>
+
+        <aside class="sidebar">
+            <nav class="side-tabs" role="tablist">
+                <button class="tab active" data-panel="markers">Markers</button>
+                <button class="tab" data-panel="camera">Camera</button>
+                <button class="tab" data-panel="trigger">Trigger</button>
+                <button class="tab" data-panel="files">Files</button>
+            </nav>
+            <div class="panel active" id="panel-markers">
+                <div class="panel-head">
+                    <span class="muted" id="markers-summary">No recording</span>
+                    <span class="grow"></span>
+                    <button id="btn-markers-csv" class="small">CSV</button>
+                    <button id="btn-markers-clear" class="small danger">Clear</button>
+                </div>
+                <div class="table-scroll"><table class="markers" id="markers-table">
+                    <thead>
+                        <tr><th>Ref</th><th>Name</th><th>Frame</th><th>Time</th><th>From prev</th><th>From ref</th><th></th></tr>
+                    </thead>
+                    <tbody></tbody>
+                </table></div>
+                <p class="muted small-text">Times come from the driver timestamp of each frame. Hover a delta to see the nominal value for a perfectly regular frame interval.</p>
+            </div>
+            <div class="panel" id="panel-camera">
+                <div class="form">
+                    <label class="row"><span>Format</span><select id="sel-format"></select></label>
+                    <label class="row"><span>Size</span><select id="sel-size"></select></label>
+                    <label class="row"><span>Rate</span><select id="sel-fps"></select></label>
+                    <div class="row"><span></span><button id="btn-apply-config" class="primary">Apply</button></div>
+                    <p class="muted small-text" id="config-note"></p>
+                </div>
+                <h3>Controls</h3>
+                <div class="form" id="controls-form"></div>
+                <div class="row"><button id="btn-controls-refresh" class="small">Refresh</button><button id="btn-controls-reset" class="small">Reset to defaults</button></div>
+            </div>
+            <div class="panel" id="panel-trigger">
+                <div class="form">
+                    <label class="row"><span>Port</span><select id="sel-port"></select></label>
+                    <div class="row"><span></span><span class="btn-row"><button id="btn-port-refresh" class="small">Refresh</button><button id="btn-port-connect" class="primary">Connect</button><button id="btn-port-disconnect">Disconnect</button></span></div>
+                    <p class="muted small-text" id="trigger-note">A pico running the optional firmware sends TRIG lines over USB serial. The server fires the armed capture when one arrives.</p>
+                </div>
+                <h3>Board</h3>
+                <div class="form" id="board-form">
+                    <label class="row"><span>Delay</span><span class="inline"><input type="number" id="in-board-delay" min="0" step="1" value="0"><span class="unit">ms</span></span></label>
+                    <label class="row"><span>Period</span><span class="inline"><input type="number" id="in-board-period" min="0" step="100" value="0"><span class="unit">ms</span></span></label>
+                    <label class="row"><span>Flash</span><span class="inline"><input type="number" id="in-board-flash" min="0" step="1" value="20"><span class="unit">ms</span></span></label>
+                    <label class="row"><span>Input</span><select id="sel-board-edge"><option value="FALL">falling edge</option><option value="RISE">rising edge</option><option value="BOTH">both edges</option></select></label>
+                    <div class="row"><span></span><span class="btn-row"><button id="btn-board-apply" class="small">Apply</button><button id="btn-board-arm" class="small">Arm board</button><button id="btn-board-disarm" class="small">Disarm board</button><button id="btn-board-flash" class="small">Flash now</button></span></div>
+                </div>
+                <h3>Console</h3>
+                <pre class="console" id="trigger-console"></pre>
+                <form class="row" id="trigger-send-form">
+                    <input type="text" id="in-trigger-line" placeholder="command, e.g. STATUS">
+                    <button type="submit" class="small">Send</button>
+                </form>
+            </div>
+            <div class="panel" id="panel-files">
+                <div class="form">
+                    <label class="row"><span>Name</span><input type="text" id="in-save-name" placeholder="recording name"></label>
+                    <div class="row"><span></span><span class="btn-row"><button id="btn-save" class="primary">Save</button></span></div>
+                    <label class="row"><span>Export</span><span class="inline"><input type="number" id="in-export-fps" min="1" step="1" value="30"><span class="unit">fps mp4</span><button id="btn-export" class="small">Export</button></span></label>
+                    <p class="muted small-text" id="files-note"></p>
+                </div>
+                <h3>Saved recordings</h3>
+                <ul class="saved-list" id="saved-list"></ul>
+            </div>
+        </aside>
+    </main>
+
+    <dialog id="help-dialog">
+        <h2>Keyboard shortcuts</h2>
+        <table class="shortcuts">
+            <tr><td>Left / Right</td><td>previous / next frame (Shift: 10 frames)</td></tr>
+            <tr><td>Home / End</td><td>first / last frame</td></tr>
+            <tr><td>Space</td><td>play / pause</td></tr>
+            <tr><td>M</td><td>add marker at the current frame</td></tr>
+            <tr><td>R</td><td>make the marker at the current frame the reference</td></tr>
+            <tr><td>[ / ]</td><td>jump to previous / next marker</td></tr>
+            <tr><td>I / O</td><td>set range start / end</td></tr>
+            <tr><td>Delete</td><td>remove the marker at the current frame</td></tr>
+            <tr><td>T</td><td>fire the trigger while armed</td></tr>
+            <tr><td>Escape</td><td>stop playback, close dialogs</td></tr>
+        </table>
+        <form method="dialog"><button>Close</button></form>
+    </dialog>
+    <div class="toasts" id="toasts"></div>
+</body>
+</html>

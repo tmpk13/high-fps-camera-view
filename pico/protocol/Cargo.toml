@@ -1,0 +1,7 @@
+[package]
+name = "hfcv-protocol"
+version = "0.1.0"
+edition = "2021"
+description = "Line protocol shared by the trigger firmware and its tests"
+
+[dependencies]
