@@ -14,6 +14,8 @@ export class ViewZoom {
         host.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
         host.addEventListener("pointerdown", (e) => this.onPointerDown(e));
         host.addEventListener("dblclick", () => this.reset());
+        // Keep the browser's middle click autoscroll out of the viewer.
+        host.addEventListener("auxclick", (e) => e.preventDefault());
         new ResizeObserver(() => this.apply()).observe(host);
     }
 
@@ -39,7 +41,9 @@ export class ViewZoom {
     }
 
     private onPointerDown(e: PointerEvent): void {
-        if (this.scale <= 1 || e.button !== 0) return;
+        // Middle button pans always; the left button only once zoomed in.
+        const middle = e.button === 1;
+        if (!middle && (e.button !== 0 || this.scale <= 1)) return;
         e.preventDefault();
         this.host.setPointerCapture(e.pointerId);
         this.host.classList.add("panning");
